@@ -1,0 +1,20 @@
+{
+  "name": "woolworths-scraper",
+  "version": "1.0.0",
+  "description": "Scrape Woolworths SA food product URLs and details",
+  "type": "module",
+  "engines": {
+    "node": "24.20.x"
+  },
+  "scripts": {
+    "fetch-urls": "node fetch-urls.js",
+    "scrape-details": "node scrape-details.js",
+    "scrape-details:test": "node scrape-details.js --limit 5 --output test-products.json",
+    "ui:data": "node scripts/build-ui-data.mjs",
+    "ui:dev": "npm run ui:data && npm run dev --prefix ui",
+    "ui:build": "npm run ui:data && npm run build --prefix ui"
+  },
+  "dependencies": {
+    "playwright": "1.49.1"
+  }
+}
