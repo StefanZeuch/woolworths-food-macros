@@ -1,19 +1,23 @@
 import { useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import type { SlimProduct } from '../types/product';
+import type { SlimProduct, SortState } from '../types/product';
 import { getNutrientLabel } from '../utils/nutrition';
 import { ProductRow } from './ProductRow';
 
 interface ProductTableProps {
   products: SlimProduct[];
-  sortNutrientKey: string;
+  criteria: SortState;
+  scores: Map<string, number | null>;
 }
 
 const ROW_ESTIMATE = 52;
 
-export function ProductTable({ products, sortNutrientKey }: ProductTableProps) {
+export function ProductTable({ products, criteria, scores }: ProductTableProps) {
   const parentRef = useRef<HTMLDivElement>(null);
-  const sortLabel = getNutrientLabel(sortNutrientKey);
+  const blended = criteria.length > 1;
+  const sortLabel = blended
+    ? 'Match'
+    : getNutrientLabel(criteria[0]?.nutrientKey ?? '');
 
   const rowVirtualizer = useVirtualizer({
     count: products.length,
@@ -35,7 +39,9 @@ export function ProductTable({ products, sortNutrientKey }: ProductTableProps) {
       <div className="grid grid-cols-[minmax(0,1fr)_88px_112px_40px] gap-2 border-b border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-900">
         <div>Product</div>
         <div>Price</div>
-        <div className="text-emerald-700">{sortLabel} / 100g</div>
+        <div className="text-emerald-700">
+          {blended ? sortLabel : `${sortLabel} / 100g`}
+        </div>
         <div>
           <span className="sr-only">Link</span>
         </div>
@@ -58,7 +64,8 @@ export function ProductTable({ products, sortNutrientKey }: ProductTableProps) {
               >
                 <ProductRow
                   product={product}
-                  sortNutrientKey={sortNutrientKey}
+                  criteria={criteria}
+                  score={scores.get(product.id) ?? null}
                 />
               </div>
             );

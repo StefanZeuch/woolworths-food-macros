@@ -1,4 +1,9 @@
-import type { ProductDetail, ParsedNutrient, SlimProduct } from '../types/product';
+import type {
+  ProductDetail,
+  ParsedNutrient,
+  SlimProduct,
+  SortCriterion,
+} from '../types/product';
 
 export interface NutrientOption {
   key: string;
@@ -72,6 +77,16 @@ export function getNutrient(
 
 export function getNutrientLabel(key: string): string {
   return NUTRIENT_LABELS[key] ?? key.replace(/_/g, ' ');
+}
+
+export function describeSortCriteria(criteria: SortCriterion[]): string {
+  return criteria
+    .map((criterion) => {
+      const direction = criterion.direction === 'asc' ? 'low' : 'high';
+      const label = getNutrientLabel(criterion.nutrientKey);
+      return `${direction} ${label.charAt(0).toLowerCase()}${label.slice(1)}`;
+    })
+    .join(', ');
 }
 
 export function getAllNutrientsFromDetail(detail: ProductDetail): Array<{

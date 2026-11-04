@@ -60,10 +60,12 @@ export interface FilterState {
   dietary: DietaryTag[];
 }
 
-export interface SortState {
+export interface SortCriterion {
   nutrientKey: string;
   direction: SortDirection;
 }
+
+export type SortState = SortCriterion[];
 
 export interface ParsedNutrient {
   display: string;

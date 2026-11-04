@@ -5,21 +5,19 @@ import { FilterPanel } from './components/FilterPanel';
 import { ProductTable } from './components/ProductTable';
 import { useProducts } from './hooks/useProducts';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
-import type { FilterState, SortState } from './types/product';
+import type { FilterState } from './types/product';
 import {
   filterAndSortProducts,
   getPriceBounds,
   countMissingNutrition,
   DEFAULT_FILTERS,
+  DEFAULT_SORT,
 } from './utils/filters';
 
 function App() {
   const { data, loading, error } = useProducts();
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
-  const [sort, setSort] = useState<SortState>({
-    nutrientKey: 'saturated_fat',
-    direction: 'asc',
-  });
+  const [sort, setSort] = useState(DEFAULT_SORT);
 
   const debouncedName = useDebouncedValue(filters.name);
 
@@ -35,7 +33,7 @@ function App() {
     [filters, debouncedName],
   );
 
-  const sortedProducts = useMemo(
+  const ranked = useMemo(
     () => filterAndSortProducts(products, effectiveFilters, sort),
     [products, effectiveFilters, sort],
   );
@@ -90,28 +88,19 @@ function App() {
               <> · {missingNutrition} missing nutrition</>
             )}
             {' '}
-            · showing {sortedProducts.length}
+            · showing {ranked.products.length}
           </p>
         </div>
       </header>
 
       <main className="mx-auto max-w-6xl space-y-4 px-4 py-6">
         <div className="sticky top-0 z-10 space-y-4 rounded-lg border border-gray-200 bg-white/95 p-4 shadow-sm backdrop-blur">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
             <SearchBar
               value={filters.name}
               onChange={(name) => updateFilters({ ...filters, name })}
             />
-            <SortControls
-              nutrientKey={sort.nutrientKey}
-              direction={sort.direction}
-              onNutrientChange={(nutrientKey) =>
-                setSort((prev) => ({ ...prev, nutrientKey }))
-              }
-              onDirectionChange={(direction) =>
-                setSort((prev) => ({ ...prev, direction }))
-              }
-            />
+            <SortControls criteria={sort} onChange={setSort} />
           </div>
         </div>
 
@@ -123,8 +112,9 @@ function App() {
             onClear={clearFilters}
           />
           <ProductTable
-            products={sortedProducts}
-            sortNutrientKey={sort.nutrientKey}
+            products={ranked.products}
+            criteria={sort}
+            scores={ranked.scores}
           />
         </div>
       </main>

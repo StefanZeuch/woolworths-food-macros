@@ -1,6 +1,7 @@
 import { memo, useState } from 'react';
-import type { SlimProduct } from '../types/product';
+import type { SlimProduct, SortState } from '../types/product';
 import {
+  describeSortCriteria,
   getAllNutrientsFromDetail,
   getNutrient,
   getNutrientLabel,
@@ -11,16 +12,20 @@ import { NutrientBadge } from './NutrientBadge';
 
 interface ProductRowProps {
   product: SlimProduct;
-  sortNutrientKey: string;
+  criteria: SortState;
+  score: number | null;
 }
 
 export const ProductRow = memo(function ProductRow({
   product,
-  sortNutrientKey,
+  criteria,
+  score,
 }: ProductRowProps) {
   const [expanded, setExpanded] = useState(false);
-  const sortNutrient = getNutrient(product, sortNutrientKey);
-  const sortLabel = getNutrientLabel(sortNutrientKey);
+  const blended = criteria.length > 1;
+  const primaryKey = criteria[0]?.nutrientKey ?? '';
+  const sortNutrient = getNutrient(product, primaryKey);
+  const selectedKeys = new Set(criteria.map((criterion) => criterion.nutrientKey));
   const { detail, loading, error } = useProductDetail(
     product.id,
     product.chunk,
@@ -48,7 +53,15 @@ export const ProductRow = memo(function ProductRow({
         </div>
         <div className="tabular-nums text-gray-700">{formatPrice(product.price)}</div>
         <div className="tabular-nums">
-          {sortNutrient ? (
+          {blended ? (
+            score == null ? (
+              <span className="text-gray-400">—</span>
+            ) : (
+              <span className="font-medium text-emerald-700">
+                {Math.round(score * 100)}%
+              </span>
+            )
+          ) : sortNutrient ? (
             <span className="font-medium text-emerald-700">
               {sortNutrient.display} {sortNutrient.unit}
             </span>
@@ -135,7 +148,7 @@ export const ProductRow = memo(function ProductRow({
                         label={nutrient.label}
                         value={nutrient.display}
                         unit={nutrient.unit}
-                        highlighted={nutrient.key === sortNutrientKey}
+                        highlighted={selectedKeys.has(nutrient.key)}
                       />
                     ))}
                   </div>
@@ -148,9 +161,11 @@ export const ProductRow = memo(function ProductRow({
                 )
               )}
 
-              {product.hasNutrition && sortLabel && (
+              {product.hasNutrition && criteria.length > 0 && (
                 <p className="text-xs text-gray-500">
-                  Sorted by {sortLabel} (per 100g)
+                  {blended
+                    ? `Sorted by ${describeSortCriteria(criteria)} (per 100g)`
+                    : `Sorted by ${getNutrientLabel(primaryKey)} (per 100g)`}
                 </p>
               )}
             </div>

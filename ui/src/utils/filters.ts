@@ -1,6 +1,7 @@
 import type {
   SlimProduct,
   FilterState,
+  SortCriterion,
   SortState,
   DietaryTag,
 } from '../types/product';
@@ -79,29 +80,84 @@ export function applyFilters(
   });
 }
 
-export function sortProducts(
+export const DEFAULT_SORT: SortState = [
+  { nutrientKey: 'saturated_fat', direction: 'asc' },
+];
+
+export interface RankedProducts {
+  products: SlimProduct[];
+  scores: Map<string, number | null>;
+}
+
+function nutrientValue(product: SlimProduct, key: string): number | null {
+  const value = product.nutrients[key];
+  return value == null || !Number.isFinite(value) ? null : value;
+}
+
+export function rankProducts(
   products: SlimProduct[],
-  sort: SortState,
-): SlimProduct[] {
-  const dir = sort.direction === 'asc' ? 1 : -1;
+  criteria: SortCriterion[],
+): RankedProducts {
+  const ranges = criteria.map((criterion) => {
+    let min = Infinity;
+    let max = -Infinity;
 
-  return [...products].sort((a, b) => {
-    const va = a.nutrients[sort.nutrientKey] ?? null;
-    const vb = b.nutrients[sort.nutrientKey] ?? null;
+    for (const product of products) {
+      const value = nutrientValue(product, criterion.nutrientKey);
+      if (value == null) continue;
+      if (value < min) min = value;
+      if (value > max) max = value;
+    }
 
-    if (va == null && vb == null) return a.title.localeCompare(b.title);
-    if (va == null) return 1;
-    if (vb == null) return -1;
-
-    const diff = (va - vb) * dir;
-    return diff !== 0 ? diff : a.title.localeCompare(b.title);
+    return { min, max, usable: min !== Infinity && min !== max };
   });
+
+  const scores = new Map<string, number | null>();
+  const ranked = products.map((product) => {
+    const points: number[] = [];
+
+    for (let index = 0; index < criteria.length; index += 1) {
+      const value = nutrientValue(product, criteria[index].nutrientKey);
+      if (value == null) {
+        scores.set(product.id, null);
+        return { product, score: null as number | null };
+      }
+
+      const range = ranges[index];
+      if (!range.usable) continue;
+
+      const scaled = (value - range.min) / (range.max - range.min);
+      points.push(criteria[index].direction === 'asc' ? 1 - scaled : scaled);
+    }
+
+    const score =
+      points.length === 0
+        ? 1
+        : points.reduce((total, point) => total + point, 0) / points.length;
+    scores.set(product.id, score);
+    return { product, score };
+  });
+
+  ranked.sort((a, b) => {
+    if (a.score == null && b.score == null) {
+      return a.product.title.localeCompare(b.product.title);
+    }
+    if (a.score == null) return 1;
+    if (b.score == null) return -1;
+    if (a.score !== b.score) return b.score - a.score;
+    return a.product.title.localeCompare(b.product.title);
+  });
+
+  return {
+    products: ranked.map((entry) => entry.product),
+    scores,
+  };
 }
 
 export function filterAndSortProducts(
   products: SlimProduct[],
   filters: FilterState,
   sort: SortState,
-): SlimProduct[] {
-  return sortProducts(applyFilters(products, filters), sort);
+): RankedProducts {
+  return rankProducts(applyFilters(products, filters), sort);
 }
